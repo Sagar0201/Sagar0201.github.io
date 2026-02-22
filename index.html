@@ -2427,15 +2427,15 @@
                             distSpeed = BASE_SPEED * (0.5 + (dist / 120) * 0.5);
                         }
 
-                        // 2. Add Scroll Velocity Boost - Directly linked to scroll speed
-                        const scrollBoost = currentScrollSpeed * 0.45;
-                        const dynamicSpeed = Math.min(distSpeed + scrollBoost, 22); // High cap for fast scroll
+                        // 2. Add Scroll Velocity Boost
+                        const scrollBoost = Math.min(currentScrollSpeed * 0.1, 4);
+                        const dynamicSpeed = distSpeed + scrollBoost;
 
                         const moveX = Math.cos(headAngle) * dynamicSpeed;
                         const moveY = Math.sin(headAngle) * dynamicSpeed;
 
-                        // Decay scroll speed effect (Momentum)
-                        currentScrollSpeed *= 0.9;
+                        // Decay scroll speed effect
+                        currentScrollSpeed *= 0.92;
 
                         // 3. Natural Slither Phase (Consistency at high speed)
                         // This prevents the 'flat' wave when moving fast.
