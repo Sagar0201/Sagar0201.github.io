@@ -2302,12 +2302,14 @@
             if (!sc) return; // Enabled for all screen sizes (mobile included)
             const ctx = sc.getContext('2d');
 
-            const SEG_COUNT = 95; // Slightly increased length as requested
+            const SEG_COUNT = 95;
             const SEG_DIST = 2.2;
-            const FOLLOW_SPEED = 1.6;
+            const BASE_SPEED = 1.6; // Core slither speed
             const WIGGLE_FREQ = 0.07;
             const IDLE_TIME = 8000;
             const STAY_TIME = 2000;
+            let currentScrollSpeed = 0;
+            let slitherPhase = 0; // Natural wiggle accumulator
             let targetReachedTime = 0;
 
             let W, H;
@@ -2366,8 +2368,14 @@
             window.addEventListener('scroll', () => {
                 const dy = window.scrollY - lastScrollY;
                 lastScrollY = window.scrollY;
-                // Extremely slow drift with scroll for maximum smoothness
-                headY += dy * 0.05;
+
+                // Track scroll speed for dynamic slither
+                currentScrollSpeed = Math.abs(dy);
+
+                headY -= dy;
+                for (let s of segs) s.y -= dy;
+                if (smoothedTY !== 0) smoothedTY -= dy;
+
                 lastMoveTime = Date.now();
                 isIdle = false;
             }, { passive: true });
@@ -2409,11 +2417,33 @@
                         // Smaller multiplier (0.035) makes turning much smoother/softer
                         headAngle += diff * 0.035;
 
-                        const moveX = Math.cos(headAngle) * FOLLOW_SPEED;
-                        const moveY = Math.sin(headAngle) * FOLLOW_SPEED;
-                        const wiggle = Math.cos(time * WIGGLE_FREQ) * 1.5;
-                        const perpAngle = headAngle + Math.PI / 2;
+                        // 1. Distance-based Speed (Ease-out)
+                        let distSpeed = BASE_SPEED;
+                        if (dist > 250) {
+                            // Only sprint if really far ( > 250px )
+                            distSpeed = Math.min(BASE_SPEED + (dist - 250) * 0.04, 7);
+                        } else if (dist < 120) {
+                            // Gentle arrival
+                            distSpeed = BASE_SPEED * (0.5 + (dist / 120) * 0.5);
+                        }
 
+                        // 2. Add Scroll Velocity Boost - Directly linked to scroll speed
+                        const scrollBoost = currentScrollSpeed * 0.45;
+                        const dynamicSpeed = Math.min(distSpeed + scrollBoost, 22); // High cap for fast scroll
+
+                        const moveX = Math.cos(headAngle) * dynamicSpeed;
+                        const moveY = Math.sin(headAngle) * dynamicSpeed;
+
+                        // Decay scroll speed effect (Momentum)
+                        currentScrollSpeed *= 0.9;
+
+                        // 3. Natural Slither Phase (Consistency at high speed)
+                        // This prevents the 'flat' wave when moving fast.
+                        slitherPhase += WIGGLE_FREQ * (dynamicSpeed / BASE_SPEED);
+                        const wiggleAmp = 2.0 + (dynamicSpeed * 0.2); // Wider wave as it goes faster
+                        const wiggle = Math.cos(slitherPhase) * wiggleAmp;
+
+                        const perpAngle = headAngle + Math.PI / 2;
                         headX += moveX + Math.cos(perpAngle) * wiggle;
                         headY += moveY + Math.sin(perpAngle) * wiggle;
                     }
